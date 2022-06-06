@@ -1,9 +1,8 @@
 ﻿using API_lukewberg.dev.Models;
-using API_lukewberg.dev.Services;
-using Microsoft.AspNetCore.Http;
+using API_lukewberg.dev.Utils;
 using Microsoft.AspNetCore.Mvc;
-using MongoDB.Bson;
 using MongoDB.Driver;
+using Tag = API_lukewberg.dev.Models.Tag;
 
 namespace API_lukewberg.dev.Controllers
 {
@@ -11,19 +10,39 @@ namespace API_lukewberg.dev.Controllers
     [ApiController]
     public class ArticleController : ControllerBase {
 
-        private MongoService _mongoService;
-        public ArticleController(MongoService mongoService)
+        private MongoUtils<Article> mongoUtils { get; set; }
+
+        public ArticleController(MongoClient mongoClient)
         {
-            _mongoService = mongoService;
+            mongoUtils = new MongoUtils<Article>(mongoClient);
         }
 
         [HttpGet]
-        public IEnumerable<Article> Get()
+        public IEnumerable<Article> Get(int page, int limit)
         {
-            var collection = _mongoService.Database.GetCollection<Article>("articles");
-            List<Article> result = collection.Find(new BsonDocument()).SortByDescending(article => article.TimeStamp).Limit(5).ToList();
+            var collection = mongoUtils.Database.GetCollection<Article>("articles");
+            List<Article> result = mongoUtils.GetPaginatedDocuments(collection, page, limit);
+            var tagCollection = mongoUtils.GetCollection<Tag>("tags");
+
+            result.ForEach(x =>
+            {
+                x.Tags = mongoUtils.GetDocuemntsFromList(tagCollection, x.GetTagRefs());
+            });
 
             return result;
+        }
+
+        [HttpPost]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> Post(Article article)
+        {
+            article.TimeStamp = DateTime.Now;
+            var collection = mongoUtils.GetCollection<Article>("articles");
+            await mongoUtils.CreateDocument(collection, article);
+
+            return CreatedAtAction(nameof(Post), new { article._id }, article);
         }
     }
 }
