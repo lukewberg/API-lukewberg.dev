@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Identity;
 using MongoDB.Bson.Serialization.Conventions;
 using MongoDB.Driver;
 
 var builder = WebApplication.CreateBuilder(args);
-var dbCreds = builder.Configuration["Creds:Mongo"];
+var config = builder.Configuration;
+string connectionString = $"mongodb+srv://{config["Creds:Mongo"]}@cluster0.cikxp.mongodb.net/myFirstDatabase?retryWrites=true&w=majority";
 
 // Add services to the container.
 
@@ -12,21 +14,12 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<MongoClient>(service =>
 {
-    MongoClientSettings settings = MongoClientSettings.FromConnectionString($"mongodb+srv://{dbCreds}@cluster0.cikxp.mongodb.net/myFirstDatabase?retryWrites=true&w=majority");
+    MongoClientSettings settings = MongoClientSettings.FromConnectionString(connectionString);
     settings.ServerApi = new ServerApi(ServerApiVersion.V1);
-    //var pack = new ConventionPack
-    //{
-    //    new StringIdStoredAsObjectIdConvention()
-    //};
-    //ConventionRegistry.Register("String Object Ids", pack, x => true);
     return new MongoClient(settings);
 });
 
-builder.Services.AddAuthentication()
-    .AddGoogle(googleOptions =>
-    {
-        //googleOptions.ClientId = 
-    });
+IConfigurationSection googleAuthNSection = config.GetSection("Authentication:Google");
 
 var app = builder.Build();
 
@@ -39,6 +32,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

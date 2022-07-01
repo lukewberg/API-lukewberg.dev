@@ -1,11 +1,13 @@
 ﻿using API_lukewberg.dev.Models;
 using API_lukewberg.dev.Utils;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using Tag = API_lukewberg.dev.Models.Tag;
 
 namespace API_lukewberg.dev.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class ArticleController : ControllerBase {
@@ -17,6 +19,7 @@ namespace API_lukewberg.dev.Controllers
             mongoUtils = new MongoUtils<Article>(mongoClient);
         }
 
+        [AllowAnonymous]
         [HttpGet]
         public IEnumerable<Article> Get(int page, int limit)
         {
@@ -32,10 +35,10 @@ namespace API_lukewberg.dev.Controllers
             return result;
         }
 
-        [HttpPost]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [HttpPost]
         public async Task<IActionResult> Post(Article article)
         {
             article.TimeStamp = DateTime.Now;
